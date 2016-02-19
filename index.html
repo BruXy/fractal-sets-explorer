@@ -1,0 +1,208 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<link rel="stylesheet" type="text/css" href="reset.css" />
+</head>
+<body>
+<canvas id="julia"></canvas>
+<canvas id="screen" ></canvas>
+<p id="axes" ></p>
+<script>
+'use strict';
+var c = document.getElementById("screen");
+var ctx = c.getContext("2d");
+var H = window.innerHeight;
+var W = window.innerWidth;
+
+var JuliaSeed = { x: 0.0, y: 0.0 };
+
+var d = document.getElementById("axes");
+d.style.position = "absolute";
+d.style.right = "50px";
+d.style.top = "50px";
+d.style.fontFamily = "Arial";
+d.style.color = "white";
+
+var j = document.getElementById("julia");
+var jtx = j.getContext("2d"); 
+
+function init() {
+	c.style.border = "1px solid black";
+	ctx.canvas.width = W/2;
+	ctx.canvas.height = H;
+	c.style.cursor = "crosshair";
+	console.log("W = " + W + " H = " + H);
+	c.style.width = W/2 + "px";
+	c.style.height = H + "px";
+	c.style.position = "absolute";
+	c.style.right = 0;
+	jtx.canvas.width = W/2;
+	jtx.canvas.height = H;
+	j.style.width = W/2 + "px";
+	j.style.height = H + "px";
+	j.style.position = "absolute";
+	j.style.left = 0;
+}
+
+
+// Fractal parameters
+// XMin, XMax, YMin, YMax, MaxIter
+var dataMandelbrot = {
+	XMin: -2.0,
+	XMax:  1.0,
+	YMin: -1.0,
+	YMax:  1.0,
+	DeltaX: 0.0, 
+	DeltaY: 0.0,
+}
+
+function putPixel(canvasData, x, y, r, g, b, a) {
+	var index = (x + y * W) * 4;
+
+    canvasData.data[index + 0] = r;
+    canvasData.data[index + 1] = g;
+    canvasData.data[index + 2] = b;
+    canvasData.data[index + 3] = a; // 0 -- invisible, 255 
+}
+
+function updateCanvas(canvas,canvasData) {
+    canvas.putImageData(canvasData, 0, 0);
+}
+
+function mandelbrot() {
+	var maxIterations = 100;
+	var zoom = 1;
+	var c_imag, c_real, Z_imag, Z_real, Z2_imag, Z2_real;
+	var DeltaX = dataMandelbrot.DeltaX = (dataMandelbrot.XMax - dataMandelbrot.XMin) / (W/2);
+	var DeltaY = dataMandelbrot.DeltaY = (dataMandelbrot.YMax - dataMandelbrot.YMin) / H;
+
+	console.log("DeltaX = " + DeltaX + " DeltaY = " + DeltaY);
+ 	var ctxData = ctx.getImageData(0, 0, W, H);
+
+	c_imag = dataMandelbrot.YMin;
+	for ( var row = 0 ; row < H ; row++ ) { 
+	c_real = dataMandelbrot.XMin;
+	for ( var col = 0 ; col < W/2 ; col++ ) {
+		var color = 0;
+		Z_real = 0.0;
+		Z_imag = 0.0;
+		do {
+			/* Z_{n+1} = Z_n^2 + c */
+			/* (A + Bi)^2 = A^2 + 2*A*Bi - B^2 */
+			Z2_real = Z_real * Z_real; 
+			Z2_imag = Z_imag * Z_imag;
+			Z_imag = 2.0 * Z_imag * Z_real + c_imag;
+			Z_real = Z2_real - Z2_imag + c_real;	
+			color++;
+		} while (color < maxIterations && (Z2_real + Z2_imag) < 4.0);
+	 
+		if (color < maxIterations)
+			putPixel(ctxData, col, row, color, 4*color, 20+color, 255) ;
+		else
+			putPixel(ctxData, col, row, 0, 0, 0, 255);	
+		
+		c_real += DeltaX;   
+	}
+	c_imag += DeltaY;
+	}
+	updateCanvas(ctx,ctxData);
+}
+
+function julia(c_real, c_imag) {
+/* http://en.wikipedia.org/wiki/Julia_Set */
+/* c -- starting point in complex plane choosen from Mandelbrot set */
+	console.log("julia!");
+	var row, col, color = 0;
+	var x, y;
+	var Z_imag;
+	var Z_real;
+	var Z2_imag;
+	var Z2_real;
+	var XMax = 2.0;
+    var XMin = -2.0;
+    var YMax = 2.5;
+    var YMin = -2.5;
+	var DeltaX = (XMax - XMin) / (W/2);
+	var DeltaY = (YMax - YMin) / H;
+	var maxIter = 100;
+
+    var jtxData = jtx.getImageData(0, 0, W, H);
+	
+	/* Julia set computation */
+	y = YMax;
+	for(row = 0; row < H; row++){
+		x = XMin;
+		for(col = 0; col < W/2; col++){
+			color = 0;
+			Z_real = x; /* Z := x+yi */
+			Z_imag = y;
+			
+			/* Iteration */
+			do {
+				/* Z_{n+1} = Z_n^2 + c */
+				Z2_real = Z_real * Z_real; 
+				Z2_imag = Z_imag * Z_imag;
+				Z_imag = 2.0 * Z_imag * Z_real + c_imag;
+				Z_real = Z2_real - Z2_imag + c_real;	
+				color++;
+			} while(color < maxIter && (Z2_real + Z2_imag) < 4.0);
+
+			/* plot pixel */
+			if (color < maxIter)
+				putPixel(jtxData, col, row, color, 4*color, 20+color, 255) ;
+			else
+				putPixel(jtxData, col, row, 0, 0, 0, 255);	
+
+			x += DeltaX;  
+		}
+		y -= DeltaY;  
+	}		
+
+	updateCanvas(jtx,jtxData);
+}
+
+function getMouse() {
+	MouseLeft = true; // Button is pressed down
+	getMousePosition();
+}
+
+function getMousePosition() {
+    var rect = c.getBoundingClientRect();
+	var x = event.clientX - rect.left;
+	var y = event.clientY - rect.top;  	
+	var dx = JuliaSeed.x = dataMandelbrot.XMin + (dataMandelbrot.DeltaX * x);
+	var dy = JuliaSeed.y = dataMandelbrot.YMin + (dataMandelbrot.DeltaY *(H-y));
+    var node = "X: " + x + " Y: " + y + "<br/>" + parseFloat(Math.round(dx * 100) / 100).toFixed(2) + " " + parseFloat(Math.round(dy * 100) / 100).toFixed(2);
+	if ( MouseLeft == true ) { 
+		console.log("getMousePosition " + node);
+    	julia(dx, dy);
+	}
+	d.innerHTML = node;
+} 
+
+// Events handler 
+var MouseLeft = false;
+ctx.canvas.onmousemove = getMousePosition;
+ctx.canvas.onmousedown = getMouse;
+ctx.canvas.onmouseup = function() { MouseLeft = false; };
+
+window.onresize = function() {
+	W = window.innerWidth;
+    H = window.innerHeight;
+    console.log("Window resized to " + W + "x" + H);
+	init();
+	mandelbrot();
+	julia(JuliaSeed.x, JuliaSeed.y);
+} 
+
+// Run script
+window.onload = function() {
+	init();
+	mandelbrot();
+	julia(0, 0);
+}
+</script>
+</body>
+</html>
+

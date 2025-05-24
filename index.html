@@ -11,70 +11,103 @@
 <script>
 'use strict';
 
-var c = document.getElementById("mandelbrot");
-var ctx = c.getContext("2d");
-var H = window.innerHeight;
-var W = window.innerWidth;
+const mandelbrotCanvas = document.getElementById("mandelbrot");
+const mandelbrotContext = mandelbrotCanvas.getContext("2d");
+let H = window.innerHeight;
+let W = window.innerWidth;
 
-var d = document.getElementById("axes");
-d.style.position = "absolute";
-d.style.right = "30px";
-d.style.top = "30px";
-d.style.fontFamily = "Book Antiqua', Palatino, 'Palatino Linotype', 'Palatino LT STD', Georgia, serif";
-d.style.fontStyle="italic";
-d.style.fontSize="24pt";
-d.style.color = "white";
-// d.style.webkitTextStroke = "1px black"; // destroys letters with tiny strokes
-d.style.textShadow = "3px 3px black"; 
+const coordinatesDisplay = document.getElementById("axes");
+coordinatesDisplay.style.position = "absolute";
+coordinatesDisplay.style.right = "30px";
+coordinatesDisplay.style.top = "30px";
+coordinatesDisplay.style.fontFamily = "Book Antiqua', Palatino, 'Palatino Linotype', 'Palatino LT STD', Georgia, serif";
+coordinatesDisplay.style.fontStyle="italic";
+coordinatesDisplay.style.fontSize="24pt";
+coordinatesDisplay.style.color = "white";
+// coordinatesDisplay.style.webkitTextStroke = "1px black"; // destroys letters with tiny strokes
+coordinatesDisplay.style.textShadow = "3px 3px black"; 
 
-var j = document.getElementById("julia");
-var jtx = j.getContext("2d"); 
+const juliaCanvas = document.getElementById("julia");
+const juliaContext = juliaCanvas.getContext("2d"); 
 
+const appSettings = {
+	maxIterations: 100,
+	cDigits: 2, // float precision, number of digits behind decimal point 
+	get W() { return W; },
+	set W(newW) { W = newW; },
+	get H() { return H; },
+	set H(newH) { H = newH; }
+};
+
+const uiState = {
+	MouseLeft: false
+};
+
+const mandelbrotScope = {
+	defaultConfig: {
+		XMin: -2.0, XMax:  2.0, YMin: -1.5, YMax:  1.5, Delta: 0.0, CenterX: -0.5, CenterY: -0.0
+	},
+	currentConfig: null
+};
+
+const juliaScope = {
+	defaultConfig: {
+		XMin: -2.0, XMax:  2.0, YMin: -1.5, YMax:  1.5, Delta: 0.0, CenterX: 0.0, CenterY: 0.0
+	},
+	currentConfig: null
+};
+
+let JuliaSeed = { x: 0.0, y: 0.0 };
+
+/**
+ * Initializes the canvas elements and their styles.
+ * Sets up the initial dimensions based on window size.
+ */
 function init() {
 	document.documentElement.style.overflow = 'hidden'; // remove scrollbars
-	c.style.border = "1px solid black";
-	ctx.canvas.width = W/2;
-	ctx.canvas.height = H;
-	c.style.cursor = "crosshair";
-//	console.log("W = " + W + " H = " + H);
-	c.style.width = W/2 + "px";
-	c.style.height = H + "px";
-	c.style.position = "absolute";
-	c.style.right = 0;
-	jtx.canvas.width = W/2;
-	jtx.canvas.height = H;
-	j.style.width = W/2 + "px";
-	j.style.height = H + "px";
-	j.style.position = "absolute";
-	j.style.left = 0;
+	mandelbrotCanvas.style.border = "1px solid black";
+	mandelbrotContext.canvas.width = appSettings.W/2;
+	mandelbrotContext.canvas.height = appSettings.H;
+	mandelbrotCanvas.style.cursor = "crosshair";
+//	console.log("W = " + appSettings.W + " H = " + appSettings.H);
+	mandelbrotCanvas.style.width = appSettings.W/2 + "px";
+	mandelbrotCanvas.style.height = appSettings.H + "px";
+	mandelbrotCanvas.style.position = "absolute";
+	mandelbrotCanvas.style.right = 0;
+	juliaContext.canvas.width = appSettings.W/2;
+	juliaContext.canvas.height = appSettings.H;
+	juliaCanvas.style.width = appSettings.W/2 + "px";
+	juliaCanvas.style.height = appSettings.H + "px";
+	juliaCanvas.style.position = "absolute";
+	juliaCanvas.style.left = 0;
 }
 
 
 // Fractal parameters
-var maxIterations = 100;
+// var maxIterations = 100; // Moved to appSettings
 
 // Default
-var defaultMandelbrot = {
-	XMin: -2.0, XMax:  2.0, YMin: -1.5, YMax:  1.5, Delta: 0.0, CenterX: -0.5, CenterY: -0.0
-}
+// var defaultMandelbrot = { // Moved to mandelbrotScope
+// 	XMin: -2.0, XMax:  2.0, YMin: -1.5, YMax:  1.5, Delta: 0.0, CenterX: -0.5, CenterY: -0.0
+// }
 
-var defaultJulia = {
-	XMin: -2.0, XMax:  2.0, YMin: -1.5, YMax:  1.5, Delta: 0.0, CenterX: 0.0, CenterY: 0.0
-}
+// var defaultJulia = { // Moved to juliaScope
+// 	XMin: -2.0, XMax:  2.0, YMin: -1.5, YMax:  1.5, Delta: 0.0, CenterX: 0.0, CenterY: 0.0
+// }
 
 // XMin, XMax, YMin, YMax, MaxIter
 
 // Copy of default values
 
-var dataMandelbrot; 
-var dataJulia;
+// var dataMandelbrot; // Moved to mandelbrotScope
+// var dataJulia; // Moved to juliaScope
 
-var JuliaSeed = { x: 0.0, y: 0.0 };
-var cDigits = 2; // float precision, number of digits behind decimal point 
+// var JuliaSeed = { x: 0.0, y: 0.0 }; // Kept as is for now
+// var cDigits = 2; // float precision, number of digits behind decimal point // Moved to appSettings
 
 
 /*
-var dataMandelbrot = {
+var dataMandelbrot = { // Moved to mandelbrotScope
 	XMin: -2.0,
 	XMax:  2.0,
 	YMin: -1.5,
@@ -84,7 +117,7 @@ var dataMandelbrot = {
 	CenterY: -0.0
 }
 
-var dataJulia = {
+var dataJulia = { // Moved to juliaScope
 	XMin: -2.0,
 	XMax:  2.0,
 	YMin: -1.5,
@@ -95,276 +128,413 @@ var dataJulia = {
 }
 */
 
+/**
+ * Recalculates the XMin based on YMin, YMax, canvas height, canvas width, and center X coordinate.
+ * This ensures the fractal display is correctly scaled and centered.
+ * @param {object} set - The configuration object for the fractal set (either Mandelbrot or Julia).
+ */
 function recalculateSize(set) {
-	set.Delta = (set.YMax - set.YMin) / H;
-	set.XMin = (-1) *  ((W/2.0) * set.Delta) / 2.0 + set.CenterX;
-	console.log(set)
+	set.Delta = (set.YMax - set.YMin) / appSettings.H; // Calculate pixel size
+	// Adjust XMin to keep the fractal centered horizontally
+	set.XMin = (-1) *  ((appSettings.W/2.0) * set.Delta) / 2.0 + set.CenterX;
+	console.log(set); // For debugging
 }
 
+/**
+ * Sets the color of a single pixel on the canvas.
+ * @param {ImageData} canvasData - The ImageData object of the canvas.
+ * @param {number} x - The x-coordinate of the pixel.
+ * @param {number} y - The y-coordinate of the pixel.
+ * @param {number} r - The red component of the color (0-255).
+ * @param {number} g - The green component of the color (0-255).
+ * @param {number} b - The blue component of the color (0-255).
+ * @param {number} a - The alpha component of the color (0-255).
+ */
 function putPixel(canvasData, x, y, r, g, b, a) {
-	var index = (x + y * W) * 4;
+	const index = (x + y * appSettings.W) * 4; // Calculate the pixel's index in the ImageData array
 
     canvasData.data[index + 0] = r;
     canvasData.data[index + 1] = g;
     canvasData.data[index + 2] = b;
-    canvasData.data[index + 3] = a; // 0 -- invisible, 255 
+    canvasData.data[index + 3] = a; // Alpha: 0 = invisible, 255 = fully opaque
 }
 
-function updateCanvas(canvas,canvasData) {
-    canvas.putImageData(canvasData, 0, 0);
+/**
+ * Updates the entire canvas with the new pixel data.
+ * @param {CanvasRenderingContext2D} canvasContext - The 2D rendering context of the canvas.
+ * @param {ImageData} canvasData - The ImageData object containing the new pixel data.
+ */
+function updateCanvas(canvasContext,canvasData) {
+    canvasContext.putImageData(canvasData, 0, 0);
 }
 
+/**
+ * Renders the Mandelbrot set on the Mandelbrot canvas.
+ * Iterates through each pixel, calculates its color based on the Mandelbrot algorithm,
+ * and then draws the pixel.
+ */
 function mandelbrot() {
-	var zoom = 1;
-	var c_imag, c_real, Z_imag, Z_real, Z2_imag, Z2_real;
-	recalculateSize(dataMandelbrot);
-	var delta = dataMandelbrot.Delta;
+	let zoom = 1; // TODO: This variable is declared but not used. Remove or implement.
+	let c_imag, c_real, Z_imag, Z_real, Z2_imag, Z2_real; // Variables for Mandelbrot calculation
+	recalculateSize(mandelbrotScope.currentConfig); // Adjust fractal parameters based on current config
+	const delta = mandelbrotScope.currentConfig.Delta; // Pixel size
 
- 	var ctxData = ctx.getImageData(0, 0, W, H);
+ 	let ctxData = mandelbrotContext.getImageData(0, 0, appSettings.W, appSettings.H); // Get image data to manipulate pixels
 
-	c_imag = dataMandelbrot.YMax;
-	for ( var row = 0 ; row < H ; row++ ) { 
-	c_real = dataMandelbrot.XMin;
-	for ( var col = 0 ; col < W/2 ; col++ ) {
-		var color = 0;
-		Z_real = 0.0;
-		Z_imag = 0.0;
+	c_imag = mandelbrotScope.currentConfig.YMax; // Start from the top (max imaginary value)
+	// Loop through each row (y-coordinate)
+	for ( let row = 0 ; row < appSettings.H ; row++ ) { 
+	c_real = mandelbrotScope.currentConfig.XMin; // Start from the left (min real value)
+	// Loop through each column (x-coordinate) for the Mandelbrot half of the screen
+	for ( let col = 0 ; col < appSettings.W/2 ; col++ ) {
+		let color = 0; // Iteration count, determines color
+		Z_real = 0.0;  // Z_n real part
+		Z_imag = 0.0;  // Z_n imaginary part
+		// Mandelbrot iteration: Z_{n+1} = Z_n^2 + c
 		do {
 			/* Z_{n+1} = Z_n^2 + c */
 			/* (A + Bi)^2 = A^2 + 2*A*Bi - B^2 */
-			Z2_real = Z_real * Z_real; 
-			Z2_imag = Z_imag * Z_imag;
+			Z2_real = Z_real * Z_real; // Z_n real part squared
+			Z2_imag = Z_imag * Z_imag; // Z_n imaginary part squared
+			// New Z_n imaginary part: 2 * Re(Z_n) * Im(Z_n) + Im(c)
 			Z_imag = 2.0 * Z_imag * Z_real + c_imag;
+			// New Z_n real part: Re(Z_n)^2 - Im(Z_n)^2 + Re(c)
 			Z_real = Z2_real - Z2_imag + c_real;	
-			color++;
-		} while (color < maxIterations && (Z2_real + Z2_imag) < 4.0);
+			color++; // Increment iteration count
+		// Continue if max iterations not reached and point is bounded (magnitude squared < 4)
+		} while (color < appSettings.maxIterations && (Z2_real + Z2_imag) < 4.0);
 	 
-		if (color < maxIterations)
-			putPixel(ctxData, col, row, color, 4*color, 20+color, 255) ;
-		else
-			putPixel(ctxData, col, row, 0, 0, 0, 255);	
+		// Color the pixel based on how quickly it escaped (or if it didn't)
+		const pixelColor = calculatePixelColor(color, appSettings.maxIterations); // Use new helper
+		putPixel(ctxData, col, row, pixelColor.r, pixelColor.g, pixelColor.b, pixelColor.a);
 		
-		c_real += delta;   
+		c_real += delta; // Move to the next real value
 	}
-	c_imag -= delta;
+	c_imag -= delta; // Move to the next imaginary value (down one row)
 	}
-	updateCanvas(ctx,ctxData);
+	updateCanvas(mandelbrotContext,ctxData); // Draw the completed image data to the canvas
 }
 
-function julia(c_real, c_imag) {
+/**
+ * Calculates the color of a pixel based on the number of iterations.
+ * @param {number} currentIteration - The number of iterations reached for the pixel.
+ * @param {number} maxIterations - The maximum number of iterations.
+ * @returns {{r: number, g: number, b: number, a: number}} The RGBA color object.
+ */
+function calculatePixelColor(currentIteration, maxIterations) {
+	if (currentIteration < maxIterations) { // Point escaped
+		// Color is based on how quickly the point escaped. Using modulo for cycling colors.
+		return { r: currentIteration % 256, g: (4 * currentIteration) % 256, b: (20 + currentIteration) % 256, a: 255 };
+	} else { // Point is likely in the set (did not escape within maxIterations)
+		return { r: 0, g: 0, b: 0, a: 255 }; // Black for points in the set
+	}
+}
+
+/**
+ * Renders the Julia set on the Julia canvas.
+ * Uses a seed point (c_real_seed, c_imag_seed) to define the specific Julia set.
+ * @param {number} c_real_seed - The real part of the constant 'c' for the Julia set calculation.
+ * @param {number} c_imag_seed - The imaginary part of the constant 'c' for the Julia set calculation.
+ */
+function julia(c_real_seed, c_imag_seed) { 
 /* http://en.wikipedia.org/wiki/Julia_Set */
-/* c -- starting point in complex plane choosen from Mandelbrot set */
-	var row, col, color = 0;
-	var x, y;
-	var Z_imag, Z_real, Z2_imag, Z2_real;
-	recalculateSize(dataJulia);
-    var delta = dataJulia.Delta; 
+/* 'c' is the constant seed point for the Julia set, typically chosen from the Mandelbrot set. */
+	let iterationCount = 0; // Renamed 'color' to 'iterationCount' for clarity.
+	let x_coord, y_coord; // Renamed 'x,y' to 'x_coord, y_coord' for clarity. Represents the initial Z value for each pixel.
+	let Z_imag, Z_real, Z2_imag, Z2_real; // Variables for the Julia iteration calculation.
+	recalculateSize(juliaScope.currentConfig); // Adjust fractal display parameters based on current config.
+    const delta = juliaScope.currentConfig.Delta; // The size of one pixel in complex plane coordinates.
 
-    var jtxData = jtx.getImageData(0, 0, W, H);
+    let jtxData = juliaContext.getImageData(0, 0, appSettings.W, appSettings.H); // Get ImageData object for direct pixel manipulation.
 	
-	/* Julia set computation */
-	y = dataJulia.YMax;
-	for(row = 0; row < H; row++){
-		x = dataJulia.XMin;
-		for(col = 0; col < W/2; col++){
-			color = 0;
-			Z_real = x; /* Z := x+yi */
-			Z_imag = y;
+	/* Julia set computation: Iterate through each pixel on the canvas */
+	y_coord = juliaScope.currentConfig.YMax; // Start from the top (maximum imaginary value).
+	// Loop through each row (y-coordinate).
+	for(let row = 0; row < appSettings.H; row++){
+		x_coord = juliaScope.currentConfig.XMin; // Start from the left (minimum real value).
+		// Loop through each column (x-coordinate) for the Julia canvas (left half of the screen).
+		for(let col = 0; col < appSettings.W/2; col++){
+			iterationCount = 0; // Reset iteration count for each new pixel.
+			Z_real = x_coord; /* Z_0 real part: current pixel's x-coordinate in the complex plane. */
+			Z_imag = y_coord; /* Z_0 imaginary part: current pixel's y-coordinate in the complex plane. */
 			
-			/* Iteration */
+			/* Iteration: Z_{n+1} = Z_n^2 + c */
+			// 'c' is (c_real_seed, c_imag_seed)
 			do {
-				/* Z_{n+1} = Z_n^2 + c */
-				Z2_real = Z_real * Z_real; 
-				Z2_imag = Z_imag * Z_imag;
-				Z_imag = 2.0 * Z_imag * Z_real + c_imag;
-				Z_real = Z2_real - Z2_imag + c_real;	
-				color++;
-			} while(color < maxIterations && (Z2_real + Z2_imag) < 4.0);
+				Z2_real = Z_real * Z_real; // Real part of Z_n squared.
+				Z2_imag = Z_imag * Z_imag; // Imaginary part of Z_n squared.
+				// New Z_n imaginary part: 2 * Re(Z_n) * Im(Z_n) + Im(c)
+				Z_imag = 2.0 * Z_imag * Z_real + c_imag_seed; 
+				// New Z_n real part: Re(Z_n)^2 - Im(Z_n)^2 + Re(c)
+				Z_real = Z2_real - Z2_imag + c_real_seed; 
+				iterationCount++; // Increment iteration count.
+			// Continue if max iterations not reached AND the point is still bounded (magnitude squared < 4.0).
+			} while(iterationCount < appSettings.maxIterations && (Z2_real + Z2_imag) < 4.0);
 
-			/* plot pixel */
-			if (color < maxIterations)
-				putPixel(jtxData, col, row, color, 4*color, 20+color, 255) ;
-			else
-				putPixel(jtxData, col, row, 0, 0, 0, 255);	
+			/* Plot pixel: Determine color based on iterationCount */
+			const pixelColor = calculatePixelColor(iterationCount, appSettings.maxIterations); // Use new helper
+			putPixel(jtxData, col, row, pixelColor.r, pixelColor.g, pixelColor.b, pixelColor.a);
 
-			x += delta;  
+			x_coord += delta; // Move to the next real value (pixel to the right).
 		}
-		y -= delta;  
+		y_coord -= delta; // Move to the next imaginary value (pixel row downwards).
 	}		
 
-	updateCanvas(jtx,jtxData);
+	updateCanvas(juliaContext,jtxData); // Draw the completed Julia set image data to the canvas.
 }
 
+/**
+ * Handles the mouse down event, setting a flag and triggering position update.
+ */
 function getMouse() {
-	MouseLeft = true; // Button is pressed down
-	getMousePosition();
+	uiState.MouseLeft = true; // Button is pressed down
+	getMousePosition(event); // Pass the event object
 }
 
+/**
+ * Converts screen pixel coordinates to complex plane coordinates.
+ * @param {number} x - The screen x-coordinate.
+ * @param {number} y - The screen y-coordinate.
+ * @param {object} dataSet - The configuration object for the fractal set (Mandelbrot or Julia).
+ * @returns {{dx: number, dy: number}} The corresponding complex plane coordinates.
+ */
 function screen_xy_to_real(x, y, dataSet) {
-	var dx = dataSet.XMin + (dataSet.Delta * x);
-	var dy = dataSet.YMin + (dataSet.Delta *(H-y));
-	console.log("c = " + dx + " + " + dy + "i");
-	return { dx, dy }
+	// dx = XMin + (pixel size * screen x-coordinate)
+	const dx = dataSet.XMin + (dataSet.Delta * x);
+	// dy = YMin + (pixel size * (canvas height - screen y-coordinate))
+	// (H-y) because screen y is top-to-bottom, fractal y is bottom-to-top
+	const dy = dataSet.YMin + (dataSet.Delta *(appSettings.H-y));
+	console.log("c = " + dx + " + " + dy + "i"); // Debugging
+	return { dx, dy };
 }
 
+/**
+ * Formats the Julia seed coordinates (complex number) for display.
+ * @param {number} dx - The real part of the Julia seed.
+ * @param {number} dy - The imaginary part of the Julia seed.
+ * @param {number} digits - The number of decimal places to display.
+ * @returns {string} The formatted string representation of the Julia seed.
+ */
 function formatJuliaSeed(dx, dy, digits) {
-	var imag = "<span style='font-style: normal;'>i</span>"; 	
+	const imag = "<span style='font-style: normal;'>i</span>"; // HTML for the imaginary unit 'i'
 	
+	/**
+	 * Formats a number to a string with a fixed number of decimal places.
+	 * Handles absolute value for consistent formatting before adding sign.
+	 * @param {number} a - The number to format.
+	 * @returns {string} The formatted number string.
+	 */
 	function formatNumber(a) { // float to string conversion
-		var mult   = Math.pow(10, digits);
+		const mult   = Math.pow(10, digits);
 		return parseFloat(Math.round(Math.abs(a)*mult)/mult).toFixed(digits); 
 	}
 
-	var dxString = formatNumber(dx); 
-	var dyString = formatNumber(dy);
+	let dxString = formatNumber(dx); 
+	let dyString = formatNumber(dy);
 
+	// Add minus sign if negative
 	if(dx < 0) { // add prefix 'MINUS SIGN' (U+2212)
 		dxString = "\u2212" + dxString;   
 	}
 
 	if(dy < 0) {
-		dyString = "\u2212 " + dyString;	
+		dyString = "\u2212 " + dyString;	// Minus sign for imaginary part
 	}
 	else {
-		dyString = "+ " + dyString;
+		dyString = "+ " + dyString; // Plus sign for positive imaginary part
 	}
 
     // imaginery unit separated by U+2009 'THIN SPACE'
 	return "c = " + dxString + " " + dyString + "\u2009" + imag;	
 }
 
-function getMousePosition() {
-    var rect = c.getBoundingClientRect();
-	var x = event.clientX; // - rect.left;
-	var y = event.clientY; // - rect.top;  	
-	console.log("getMousePosition: " + x + "x" + y);
-/*
-	if(x > (W - 5) || x < 5 || y < 5 || y > (H - 5)) 
+/**
+ * Handles mouse movement over the Mandelbrot canvas.
+ * Updates the coordinates display and, if mouse button is pressed,
+ * updates the Julia set based on the current mouse position.
+ * @param {MouseEvent} event - The mouse event object.
+ */
+function getMousePosition(event) { // Added event parameter
+    const rect = mandelbrotCanvas.getBoundingClientRect(); // Get canvas position and size
+	let x = event.clientX; // Raw mouse x (relative to viewport)
+	let y = event.clientY; // Raw mouse y (relative to viewport)
+	console.log("getMousePosition: " + x + "x" + y); // Debugging raw coordinates
+
+	// Example of how to check if mouse is near edge - currently commented out
+	/*
+	if(x > (appSettings.W - 5) || x < 5 || y < 5 || y > (appSettings.H - 5)) 
 	{
 		console.log("Edge!");
 		return;
 	}
 	*/
 
+	// Adjust mouse coordinates to be relative to the canvas
 	x -= rect.left;
 	y -= rect.top;  	
 	
-	var dx = screen_xy_to_real(x,y,dataMandelbrot).dx
-	var dy = screen_xy_to_real(x,y,dataMandelbrot).dy
+	// Convert screen coordinates to complex plane coordinates for Mandelbrot set
+	const { dx, dy } = screen_xy_to_real(x,y,mandelbrotScope.currentConfig);
 
-
-	if ( MouseLeft == true ) { 
+	// If left mouse button is down, update Julia seed and redraw Julia set
+	if ( uiState.MouseLeft == true ) { 
 		JuliaSeed.x = dx;	
 		JuliaSeed.y = dy;
-//		console.log("getMousePosition " + node);
-    	julia(dx, dy);
+//		console.log("getMousePosition " + node); // Old debug line
+    	julia(dx, dy); // Redraw Julia set with new seed
 	}
 
-/*
+	// Old way of displaying coordinates, now handled by formatJuliaSeed
+	/*
     var node = "X: " + x + " Y: " + y + "<br/>c = " + parseFloat(Math.round(dx *
 	100) / 100).toFixed(2) + " + " + parseFloat(Math.round(dy * 100) /
 	100).toFixed(2) + "<span style='font-style: normal;'>i</span>";
 	*/
 
-	d.innerHTML = formatJuliaSeed(dx , dy, cDigits);
+	// Update the HTML element to display the current complex coordinate
+	coordinatesDisplay.innerHTML = formatJuliaSeed(dx , dy, appSettings.cDigits);
 } 
 	
 	
 
 // Events handler 
-var MouseLeft = false;
-ctx.canvas.onmousemove = getMousePosition;
-ctx.canvas.onmousedown = getMouse;
-ctx.canvas.onmouseup = function() { MouseLeft = false; };
-// ctx.canvas.onwheel = zoomWheel; 
-window.onwheel = zoomWheel;
+// uiState.MouseLeft is initialized in its declaration
+mandelbrotCanvas.onmousemove = getMousePosition;
+mandelbrotCanvas.onmousedown = getMouse; // Note: getMouse calls getMousePosition
+mandelbrotCanvas.onmouseup = function() { uiState.MouseLeft = false; }; // Reset mouse button state
+// mandelbrotCanvas.onwheel = zoomWheel; // Could be canvas-specific or window-wide
+window.onwheel = zoomWheel; // Window-wide zoom
 
-window.onkeypress = function() {
-	var key = String.fromCharCode(event.charCode);
-	console.log("keypress = " + key);
-	if ( key == 'r' || key == 'R' ) { // reset views
-		dataMandelbrot = JSON.parse(JSON.stringify( defaultMandelbrot ));
- 	    dataJulia      = JSON.parse(JSON.stringify( defaultJulia ));
-		mandelbrot();
-		julia(JuliaSeed.x, JuliaSeed.y);
-		cDigits = 2;
+/**
+ * Handles key press events.
+ * 'r' or 'R' resets the fractal views to their default states.
+ * @param {KeyboardEvent} event - The keyboard event object.
+ */
+window.onkeypress = function(event) { // Added event parameter
+	const key = String.fromCharCode(event.charCode); // Get the pressed key
+	console.log("keypress = " + key); // Debugging
+	if ( key == 'r' || key == 'R' ) { // Check for 'r' or 'R'
+		// Reset Mandelbrot and Julia configurations to defaults
+		mandelbrotScope.currentConfig = JSON.parse(JSON.stringify( mandelbrotScope.defaultConfig ));
+ 	    juliaScope.currentConfig      = JSON.parse(JSON.stringify( juliaScope.defaultConfig ));
+		mandelbrot(); // Redraw Mandelbrot
+		julia(JuliaSeed.x, JuliaSeed.y); // Redraw Julia with current seed
+		appSettings.cDigits = 2; // Reset coordinate display precision
 	}
 }
 
+/**
+ * Placeholder for a Mandelbrot-specific zoom function. Currently unused.
+ * @param {number} zoom - The zoom factor.
+ */
 function zoomMandelbrot(zoom) { // zoom < -1 -- zoom in, else zoom out 
-
+	// TODO: This function is declared but not used. Remove or implement.
 }
 
 
-function zoomWheel() {
-//  var rect = c.getBoundingClientRect();
-//	var x = event.clientX - rect.left;
-//	var y = event.clientY - rect.top;  
-	var x = event.clientX;
-	var y = event.clientY;  
-    var delta = event.deltaY; // return: wheel up -53, wheel down 53
-	var elementMouseIsOver = document.elementFromPoint(x, y);		
-	// zoomWheel over Mandelbrot
-	if ( elementMouseIsOver === c ) {
-		 var rect = c.getBoundingClientRect(); 
-		 var set  = dataMandelbrot;
+/**
+ * Handles mouse wheel events for zooming in and out of fractals.
+ * Determines which fractal (Mandelbrot or Julia) the mouse is over and applies zoom.
+ * @param {WheelEvent} event - The wheel event object.
+ */
+function applyZoom(dataSetConfiguration, wheelScrollDelta, complexPlaneMousePosition) {
+	const { dx, dy } = complexPlaneMousePosition; // dx, dy are the real and imaginary parts of mouse position in the complex plane.
+	dataSetConfiguration.CenterX = dx; // Center the new view on the mouse's complex coordinates.
+	dataSetConfiguration.CenterY = dy;
+
+	if (wheelScrollDelta < -1) { // Zoom in (typically wheel scroll up, negative delta value)
+		// Reduce the viewable range in the complex plane, effectively zooming in.
+		// The divisors (e.g., appSettings.H / 4, appSettings.W / 8) control the "speed" or "strength" of the zoom.
+		// A smaller divisor means a smaller viewable range, thus a stronger zoom.
+		dataSetConfiguration.YMin = dy - (appSettings.H / 4) * dataSetConfiguration.Delta;
+		dataSetConfiguration.YMax = dy + (appSettings.H / 4) * dataSetConfiguration.Delta;
+		// For XMin, W/8 is used because each fractal's canvas is W/2 wide.
+		// This attempts to maintain a somewhat proportional zoom relative to the canvas dimensions.
+		dataSetConfiguration.XMin = dx - (appSettings.W / 8) * dataSetConfiguration.Delta; 
+		appSettings.cDigits += 1; // Increase the number of decimal places for coordinate display.
+	} else { // Zoom out (typically wheel scroll down, positive delta value)
+		// Increase the viewable range in the complex plane, effectively zooming out.
+		dataSetConfiguration.YMin = dy - (appSettings.H) * dataSetConfiguration.Delta; // Larger multiplier for Y-range
+		dataSetConfiguration.YMax = dy + (appSettings.H) * dataSetConfiguration.Delta; // Larger multiplier for Y-range
+		dataSetConfiguration.XMin = dx - (appSettings.W / 2) * dataSetConfiguration.Delta; // Larger multiplier for X-range
+		appSettings.cDigits -= 1; // Decrease the number of decimal places for coordinate display.
+		if (appSettings.cDigits < 0) appSettings.cDigits = 0; // Prevent negative digit count.
+	}
+}
+
+/**
+ * Handles mouse wheel events for zooming in and out of fractals.
+ * Determines which fractal (Mandelbrot or Julia) the mouse is over and applies zoom.
+ * @param {WheelEvent} event - The wheel event object.
+ */
+function zoomWheel(event) { 
+	const viewportMouseX = event.clientX; // Mouse x-coordinate relative to the viewport.
+	const viewportMouseY = event.clientY; // Mouse y-coordinate relative to the viewport.
+    const wheelScrollDelta = event.deltaY; // Indicates scroll direction and magnitude. Negative for zoom in, positive for zoom out.
+	const elementUnderMouse = document.elementFromPoint(viewportMouseX, viewportMouseY); // The DOM element currently under the mouse cursor.
+	
+	let targetCanvasBoundingRect; // Will store the bounding rectangle of the canvas being zoomed.
+	let targetFractalConfig;  // Will store the configuration object (Mandelbrot or Julia) for the target canvas.
+
+	// Determine if the mouse is over the Mandelbrot or Julia canvas and set the appropriate context.
+	if ( elementUnderMouse === mandelbrotCanvas ) {
+		 targetCanvasBoundingRect = mandelbrotCanvas.getBoundingClientRect(); 
+		 targetFractalConfig  = mandelbrotScope.currentConfig;
 	 }
-	// zoomWheel over Julia
-	if ( elementMouseIsOver === j ) {
-		var rect = j.getBoundingClientRect();
-		var set  = dataJulia;
+	else if ( elementUnderMouse === juliaCanvas ) { 
+		targetCanvasBoundingRect = juliaCanvas.getBoundingClientRect();
+		targetFractalConfig  = juliaScope.currentConfig;
 	}
 
-	var x = event.clientX - rect.left;
-	var y = event.clientY - rect.top;  
+	// If the mouse is not over a recognized canvas, or if its configuration is missing, do nothing.
+	if (!targetCanvasBoundingRect || !targetFractalConfig) return; 
 
-//	console.log("x = " + x + ", y = " + y + " element:" + elementMouseIsOver);	
-		
-	var dx = screen_xy_to_real(x,y,set).dx
-	var dy = screen_xy_to_real(x,y,set).dy
+	// Adjust mouse coordinates to be relative to the hovered canvas (rather than the viewport).
+	const xRelativeToCanvas = viewportMouseX - targetCanvasBoundingRect.left;
+	const yRelativeToCanvas = viewportMouseY - targetCanvasBoundingRect.top;  
 
-	console.log(this + "wheel " + delta);
-	if ( delta < -1 ) {
-		console.log("ZOOM in at " + x + "x" +y);
-		set.CenterX = dx;
-		set.CenterY = dy;
-		set.YMin = dy - (H/4) * set.Delta;
-		set.YMax = dy + (H/4) * set.Delta;
-		set.XMin = dx - (W/8) * set.Delta;
-		cDigits += 1;
-	}
-	else {
-		set.CenterX = dx;
-		set.CenterY = dy;
-		set.YMin = dy - (H) * set.Delta;
-		set.YMax = dy + (H) * set.Delta;
-		set.XMin = dx - (W/2) * set.Delta;
-		console.log("ZOOM out at " + x + "x" +y);
-		cDigits -= 1;
-	}
+	// Convert the canvas-relative mouse position to complex plane coordinates.
+	const complexPlaneMousePosition = screen_xy_to_real(xRelativeToCanvas, yRelativeToCanvas, targetFractalConfig);
 
-	// Redraw zoomed plane	
-	if ( set === dataMandelbrot ) mandelbrot(); 
-	if ( set === dataJulia ) julia(JuliaSeed.x,JuliaSeed.y); 
+	// Apply the zoom logic using the determined parameters.
+	applyZoom(targetFractalConfig, wheelScrollDelta, complexPlaneMousePosition);
+	
+	// Debugging log:
+	const zoomType = wheelScrollDelta < -1 ? "in" : "out";
+	const fractalName = elementUnderMouse === mandelbrotCanvas ? "Mandelbrot" : "Julia";
+	console.log(`Zoom ${zoomType} on ${fractalName} at screen:(${xRelativeToCanvas.toFixed(2)}, ${yRelativeToCanvas.toFixed(2)}), complex:(${complexPlaneMousePosition.dx.toFixed(appSettings.cDigits)}, ${complexPlaneMousePosition.dy.toFixed(appSettings.cDigits)}i)`);
+
+	// Redraw the appropriate fractal after zoom.
+	if ( targetFractalConfig === mandelbrotScope.currentConfig ) mandelbrot(); 
+	else if ( targetFractalConfig === juliaScope.currentConfig ) julia(JuliaSeed.x,JuliaSeed.y); 
 }
 
+/**
+ * Handles the window resize event.
+ * Updates canvas dimensions and redraws the fractals.
+ */
 window.onresize = function() {
-	W = window.innerWidth;
-    H = window.innerHeight;
-    console.log("Window resized to " + W + "x" + H);
-	init();
-	mandelbrot();
-	console.log(JuliaSeed);
-	julia(JuliaSeed.x, JuliaSeed.y);
+	appSettings.W = window.innerWidth; // Update global width
+    appSettings.H = window.innerHeight; // Update global height
+    console.log("Window resized to " + appSettings.W + "x" + appSettings.H);
+	init(); // Re-initialize canvases with new dimensions
+	mandelbrot(); // Redraw Mandelbrot
+	console.log(JuliaSeed); // Debug Julia seed
+	julia(JuliaSeed.x, JuliaSeed.y); // Redraw Julia
 } 
 
+/**
+ * Main entry point, called when the window finishes loading.
+ * Initializes fractal configurations and renders them for the first time.
+ */
 // Run script
 window.onload = function() {
-	init();
-	dataMandelbrot = JSON.parse(JSON.stringify( defaultMandelbrot ));
-    dataJulia      = JSON.parse(JSON.stringify( defaultJulia ));
-	mandelbrot();
-	julia(0, 0);
+	init(); // Initialize canvases
+	// Set current configurations by deep copying default configurations
+	mandelbrotScope.currentConfig = JSON.parse(JSON.stringify( mandelbrotScope.defaultConfig ));
+    juliaScope.currentConfig      = JSON.parse(JSON.stringify( juliaScope.defaultConfig ));
+	mandelbrot(); // Initial Mandelbrot render
+	julia(0, 0); // Initial Julia render with seed (0,0)
 }
 </script>
 </body>
